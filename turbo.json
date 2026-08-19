@@ -16,6 +16,20 @@
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "db:push": {
+      "cache": false
+    },
+    "db:generate": {},
+    "db:migrate": {
+      "cache": false
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
+    },
+    "test": {
+      "cache": false
     }
   }
 }

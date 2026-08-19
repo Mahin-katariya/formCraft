@@ -1,0 +1,31 @@
+{
+  "name": "@repo/api",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "test": "dotenv -e ../../.env -- vitest run"
+  },
+  "dependencies": {
+    "@repo/database":"workspace:*",
+    "@repo/trpc": "workspace:*",
+    "@scalar/express-api-reference": "^0.8.48",
+    "@trpc/server": "^11.8.1",
+    "@types/cookie-parser": "^1.4.10",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "trpc-to-openapi": "^3.1.0",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@swc/core": "^1.16.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.13.3",
+    "dotenv-cli": "^11.0.0",
+    "tsx": "^4.23.12",
+    "vitest": "^4.1.11"
+  },
+  "type": "module"
+}

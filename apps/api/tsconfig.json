@@ -1,0 +1,20 @@
+{
+  "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    "moduleResolution": "Node",
+    "module": "CommonJS",
+
+    // We don't need these for our final build
+    "declarationMap": false,
+    "declaration": false,
+    "sourceMap": false,
+    "types": ["vitest/globals"]
+  },
+  "include": ["src"],
+  "ts-node": {
+    "swc": true
+  }
+}
