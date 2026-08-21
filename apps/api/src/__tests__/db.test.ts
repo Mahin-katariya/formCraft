@@ -1,5 +1,5 @@
 import db from '@repo/database'
-import {userTable} from '@repo/database/schema'
+import {userTable} from '@repo/database'
 
 describe('database connection', () => {
     it('should query users table and return an empty array', async () => {

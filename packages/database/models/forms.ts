@@ -1,5 +1,5 @@
 import {pgTable , uuid, varchar, text, boolean, timestamp, integer} from 'drizzle-orm/pg-core';
-import { userTable } from './users';
+import { userTable } from './users.js';
 import { nanoid } from 'nanoid';
 
 export const formsTable = pgTable('forms',{

@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, timestamp, integer } from 'drizzle-orm/pg-core';
-import { formsTable } from './forms';
+import { formsTable } from './forms.js';
 
 export const formEventsTable = pgTable('form_events', {
     id: uuid("id").primaryKey().defaultRandom(),
