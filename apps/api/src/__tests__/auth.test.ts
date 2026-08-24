@@ -1,9 +1,20 @@
 import {serverRouter} from '@repo/trpc/server'
-import db,{ userTable} from '@repo/database'
+import db,{userTable} from '@repo/database'
 import { createTestContext } from './helpers/create-test-context.js'
-import { userService } from '@repo/services'
+import { emailService, userService } from '@repo/services'
+
+vi.mock('@repo/services', async (importOriginal) => {
+    const original = await importOriginal() as Record<string, unknown>;
+    return {
+        ...original,
+        emailService: {
+            sendVerificationEmail: vi.fn()
+        }
+    }
+} )
 
 beforeEach(async () => {
+    vi.clearAllMocks(); //why did we write it above db.delete
     await db.delete(userTable);
 })
 
@@ -30,6 +41,14 @@ describe("auth.createUserWithEmailAndPassword", () => {
             caller.auth.createUserWithEmailAndPassword({ email: "test@test.com", password: "password123"})
         )
         .rejects.toThrow("User with this email exists");
+    })
+
+    it("send verification link to registered user", async () => {
+        const {ctx, cookieJar} = createTestContext();
+        const caller = serverRouter.createCaller(ctx);
+
+        await caller.auth.createUserWithEmailAndPassword({ email: "test@test.com", password: "password123"})
+        expect(emailService.sendVerificationEmail).toHaveBeenCalledWith("test@test.com", expect.any(String));
     })
 });
 
@@ -169,4 +188,97 @@ describe("auth.me", () => {
 
 afterAll(async () => {
     await db.delete(userTable);
+})
+
+describe("auth.verifyEmail", () => {
+    it("valid token verifies registered users email", async () => {
+        const {ctx: registerCtx} = createTestContext();
+        const registerCaller = serverRouter.createCaller(registerCtx);
+
+        const registerResult = await registerCaller.auth.createUserWithEmailAndPassword({email:'test@test.com',password:'password123'});
+
+        const user = await userService.findUserById(registerResult.id);
+        expect(user).toBeDefined();
+        const token = user!.verificationToken;
+        expect(token).toBeDefined();
+
+        const {ctx: verifyCtx} = createTestContext();
+        const verifyCaller = serverRouter.createCaller(verifyCtx);
+
+        const result = await verifyCaller.auth.verifyEmail({token: token!});
+        expect(result).toEqual({success: true});
+
+        const verifiedUser = await userService.findUserById(registerResult.id);
+        expect(verifiedUser!.emailVerified).toBe(true);
+        expect(verifiedUser!.verificationToken).toBeNull();
+    })
+
+    it("invalid token returns error", async () => {
+        const {ctx} = createTestContext();
+        const caller = serverRouter.createCaller(ctx);
+
+        await expect(
+            caller.auth.verifyEmail({token: "some-fake-token-that-doesnt-exist"})
+        ).rejects.toThrow("Invalid or expired verification link");
+    })
+
+    it("already-used token returns error", async () => {
+        const {ctx: registerCtx} = createTestContext();
+        const registerCaller = serverRouter.createCaller(registerCtx);
+
+        const registerResult = await registerCaller.auth.createUserWithEmailAndPassword({email:'test@test.com',password:'password123'});
+
+        const user = await userService.findUserById(registerResult.id);
+        const token = user!.verificationToken!;
+
+        const {ctx: verifyCtx} = createTestContext();
+        const verifyCaller = serverRouter.createCaller(verifyCtx);
+        await verifyCaller.auth.verifyEmail({token});
+
+        const {ctx: verifyCtx2} = createTestContext();
+        const verifyCaller2 = serverRouter.createCaller(verifyCtx2);
+
+        await expect(
+            verifyCaller2.auth.verifyEmail({token})
+        ).rejects.toThrow("Invalid or expired verification link");
+    })
+})
+
+describe("auth.resendVerification", () => {
+    it("sends new verification email for unverified user", async () => {
+        const {ctx: registerCtx} = createTestContext();
+        const registerCaller = serverRouter.createCaller(registerCtx);
+
+        const registerResult = await registerCaller.auth.createUserWithEmailAndPassword({email:'test@test.com',password:'password123'});
+
+        vi.clearAllMocks();
+
+        const {ctx: resendCtx} = createTestContext({authToken: registerResult.accessToken});
+        const resendCaller = serverRouter.createCaller(resendCtx);
+
+        const result = await resendCaller.auth.resendVerification();
+        expect(result).toEqual({success: true});
+        expect(vi.mocked(emailService.sendVerificationEmail)).toHaveBeenCalledWith("test@test.com", expect.any(String));
+    })
+
+    it("already verified user cannot resend", async () => {
+        const {ctx: registerCtx} = createTestContext();
+        const registerCaller = serverRouter.createCaller(registerCtx);
+
+        const registerResult = await registerCaller.auth.createUserWithEmailAndPassword({email:'test@test.com',password:'password123'});
+
+        const user = await userService.findUserById(registerResult.id);
+        const token = user!.verificationToken!;
+
+        const {ctx: verifyCtx} = createTestContext();
+        const verifyCaller = serverRouter.createCaller(verifyCtx);
+        await verifyCaller.auth.verifyEmail({token});
+
+        const {ctx: resendCtx} = createTestContext({authToken: registerResult.accessToken});
+        const resendCaller = serverRouter.createCaller(resendCtx);
+
+        await expect(
+            resendCaller.auth.resendVerification()
+        ).rejects.toThrow("Email already verified");
+    })
 })
