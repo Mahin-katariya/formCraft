@@ -1,7 +1,7 @@
-import {authService, userService} from '@repo/services'
+import {authService, userService, emailService} from '@repo/services'
 import { publicProcedure, protectedProcedure, router } from '../../trpc.js'
 import { clearRefreshCookie, getRefreshCookie, setRefreshCookie } from '../../utils/cookie.js'
-import { createUserWithEmailAndPassword, signInUserWithEmailAndPassword } from './model.js'
+import { createUserWithEmailAndPassword, signInUserWithEmailAndPassword, verifyEmail } from './model.js'
 import { generatePath } from '../../utils/path-generator.js'
 import { TRPCError } from '@trpc/server'
 
@@ -45,6 +45,10 @@ export const authRouter = router({
         });
 
         setRefreshCookie(ctx,refreshToken)
+
+        const token = crypto.randomUUID();
+        await userService.updateVerificationToken(user.id,token);
+        emailService.sendVerificationEmail(user.email, token);
 
         return {accessToken, id: user.id, email: user.email, emailVerified: user.emailVerified};
     }),
@@ -169,6 +173,65 @@ export const authRouter = router({
         });
         
         return {id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl, emailVerified: user.emailVerified};
+    }),
+    verifyEmail: publicProcedure
+    .meta({
+        openapi: {
+            method: "POST",
+            path: getPath('/verify'),
+            tags: ['Authentication']
+        }
+    })
+    .input(verifyEmail)
+    .mutation(async ({input}) => {
+        const {token} = input;
+
+        const {user} = await userService.findUserByVerificationToken(token);
+        if(!user) throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Invalid or expired verification link'
+        });
+        
+        const emailVerificationStatus = await userService.setEmailVerified(user.id);
+
+        if(!emailVerificationStatus) throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'failed to update the verification status'
+        })
+
+        return { success: true};
+    }),
+    resendVerification: protectedProcedure.meta({
+        openapi: {
+            method: 'POST',
+            path: getPath('/resend-email'),
+            tags: ['Authentication']
+        }
+    })
+    .mutation(async ({ctx}) => {
+
+        const user = await userService.findUserById(ctx.userId);
+        if(!user) throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'user not found'
+        });
+
+        if(user.emailVerified) throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Email already verified'
+        });
+
+        const token = crypto.randomUUID();
+
+        const updateStatus = await userService.updateVerificationToken(user.id, token);
+        if(!updateStatus) throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: "Failed to update the verification token"
+        });
+
+        emailService.sendVerificationEmail(user.email, token);
+
+        return {success: true};
     })
 
 })

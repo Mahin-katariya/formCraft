@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-serif: "Instrument Serif", serif;
+
+  --color-page: #fafafa;
+  --color-surface: #ffffff;
+  --color-panel-dark: #121212;
+  --color-input-bg: #f8fafc;
+  --color-tab-track: #f1f5f9;
+  --color-btn-primary: #1a1a1a;
+  --color-btn-primary-hover: #000000;
+  --color-accent: #2563eb;
+  --color-heading: #0f172a;
+  --color-body: #64748b;
+  --color-label: #94a3b8;
+  --color-ghost: #cbd5e1;
+  --color-border-input: #e2e8f0;
+  --color-border-card: #f1f5f9;
+  --color-divider: #f1f5f9;
+  --color-error: #ef4444;
+
+  --animate-fade-in-up: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  @keyframes fade-in-up {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.pill-button {
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-btn {
+  background: var(--color-btn-primary);
+  color: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+.dark-btn:hover {
+  background: var(--color-btn-primary-hover);
+}
+
+.dark-btn:active {
+  transform: scale(0.98);
+}
+
+.dark-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}

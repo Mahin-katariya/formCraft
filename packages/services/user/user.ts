@@ -35,6 +35,21 @@ class UserService {
         return result.id;
     }
 
+    // Email service helpers
+    async findUserByVerificationToken(token: string){
+        const [user] = await db.select().from(userTable).where(eq(userTable.verificationToken, token));
+        return {user};
+    }
+
+    async setEmailVerified(userId: string){
+        await db.update(userTable).set({emailVerified: true, verificationToken:null}).where(eq(userTable.id, userId));
+        return {success: true}
+    }
+
+    async updateVerificationToken(userId: string, token: string){
+        await db.update(userTable).set({verificationToken: token}).where(eq(userTable.id, userId));
+        return {success: true};
+    }
 
 }
 

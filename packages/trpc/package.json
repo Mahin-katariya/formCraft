@@ -13,6 +13,10 @@
     "@types/serve-static": "^2.2.0",
     "dotenv-cli": "^11.0.0"
   },
+  "exports": {
+    "./server": "./server/index.ts",
+    "./client": "./client/index.ts"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
