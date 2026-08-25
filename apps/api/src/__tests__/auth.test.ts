@@ -1,7 +1,14 @@
 import {serverRouter} from '@repo/trpc/server'
-import db,{userTable} from '@repo/database'
+import db,{userTable, authProviderTable} from '@repo/database'
 import { createTestContext } from './helpers/create-test-context.js'
-import { emailService, userService } from '@repo/services'
+import { emailService, userService, googleService, authProviderService } from '@repo/services'
+
+const mockGooglePayload = {
+    email: 'googleuser@gmail.com',
+    name: 'Google User',
+    picture: 'https://lh3.googleusercontent.com/photo.jpg',
+    sub: '1234567890'
+}
 
 vi.mock('@repo/services', async (importOriginal) => {
     const original = await importOriginal() as Record<string, unknown>;
@@ -9,12 +16,16 @@ vi.mock('@repo/services', async (importOriginal) => {
         ...original,
         emailService: {
             sendVerificationEmail: vi.fn()
+        },
+        googleService: {
+            verifyIdToken: vi.fn()
         }
     }
-} )
+})
 
 beforeEach(async () => {
-    vi.clearAllMocks(); //why did we write it above db.delete
+    vi.clearAllMocks();
+    await db.delete(authProviderTable);
     await db.delete(userTable);
 })
 
@@ -187,6 +198,7 @@ describe("auth.me", () => {
 })
 
 afterAll(async () => {
+    await db.delete(authProviderTable);
     await db.delete(userTable);
 })
 
@@ -280,5 +292,75 @@ describe("auth.resendVerification", () => {
         await expect(
             resendCaller.auth.resendVerification()
         ).rejects.toThrow("Email already verified");
+    })
+})
+
+describe("auth.googleLogin", () => {
+    it("creates a new user from Google login", async () => {
+        vi.mocked(googleService.verifyIdToken).mockResolvedValue(mockGooglePayload);
+
+        const {ctx, cookieJar} = createTestContext();
+        const caller = serverRouter.createCaller(ctx);
+
+        const result = await caller.auth.googleLogin({idToken: 'fake-google-token'});
+
+        expect(result).toHaveProperty("accessToken");
+        expect(result).toHaveProperty("id");
+        expect(result.email).toBe("googleuser@gmail.com");
+        expect(result.emailVerified).toBe(true);
+        expect(cookieJar['refresh-token']).toBeDefined();
+
+        const user = await userService.findUserById(result.id);
+        expect(user!.avatarUrl).toBe("https://lh3.googleusercontent.com/photo.jpg");
+        expect(user!.passwordHash).toBeNull();
+
+        const authProvider = await authProviderService.findByProviderAndUserId('google', '1234567890');
+        expect(authProvider).toBeDefined();
+    })
+
+    it("returns tokens for existing Google user without creating duplicate", async () => {
+        vi.mocked(googleService.verifyIdToken).mockResolvedValue(mockGooglePayload);
+
+        const {ctx: firstCtx} = createTestContext();
+        const firstCaller = serverRouter.createCaller(firstCtx);
+        const firstResult = await firstCaller.auth.googleLogin({idToken: 'fake-google-token'});
+
+        const {ctx: secondCtx, cookieJar} = createTestContext();
+        const secondCaller = serverRouter.createCaller(secondCtx);
+        const secondResult = await secondCaller.auth.googleLogin({idToken: 'fake-google-token'});
+
+        expect(secondResult).toHaveProperty("accessToken");
+        expect(secondResult.id).toBe(firstResult.id);
+        expect(cookieJar['refresh-token']).toBeDefined();
+    })
+
+    it("links Google account to existing credential user", async () => {
+        const {ctx: registerCtx} = createTestContext();
+        const registerCaller = serverRouter.createCaller(registerCtx);
+        await registerCaller.auth.createUserWithEmailAndPassword({email: 'googleuser@gmail.com', password: 'password123'});
+
+        vi.mocked(googleService.verifyIdToken).mockResolvedValue(mockGooglePayload);
+
+        const {ctx: googleCtx, cookieJar} = createTestContext();
+        const googleCaller = serverRouter.createCaller(googleCtx);
+        const result = await googleCaller.auth.googleLogin({idToken: 'fake-google-token'});
+
+        expect(result).toHaveProperty("accessToken");
+        expect(result.email).toBe("googleuser@gmail.com");
+        expect(cookieJar['refresh-token']).toBeDefined();
+
+        const authProvider = await authProviderService.findByProviderAndUserId('google', '1234567890');
+        expect(authProvider).toBeDefined();
+    })
+
+    it("rejects invalid Google token", async () => {
+        vi.mocked(googleService.verifyIdToken).mockRejectedValue(new Error('Invalid token'));
+
+        const {ctx} = createTestContext();
+        const caller = serverRouter.createCaller(ctx);
+
+        await expect(
+            caller.auth.googleLogin({idToken: 'bad-token'})
+        ).rejects.toThrow("Invalid Google token");
     })
 })
