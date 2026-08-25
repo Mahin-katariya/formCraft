@@ -1,7 +1,7 @@
-import {authService, userService, emailService} from '@repo/services'
+import {authService, userService, emailService, googleService, authProviderService} from '@repo/services'
 import { publicProcedure, protectedProcedure, router } from '../../trpc.js'
 import { clearRefreshCookie, getRefreshCookie, setRefreshCookie } from '../../utils/cookie.js'
-import { createUserWithEmailAndPassword, signInUserWithEmailAndPassword, verifyEmail } from './model.js'
+import { createUserWithEmailAndPassword, signInUserWithEmailAndPassword, verifyEmail, googleLogin } from './model.js'
 import { generatePath } from '../../utils/path-generator.js'
 import { TRPCError } from '@trpc/server'
 
@@ -232,6 +232,57 @@ export const authRouter = router({
         emailService.sendVerificationEmail(user.email, token);
 
         return {success: true};
+    }),
+    googleLogin: publicProcedure.meta({
+        openapi: {
+            method: 'POST',
+            path: getPath('/googleLogin'),
+            tags: ["Authorization"]
+        }
+    })
+    .input(googleLogin)
+    .mutation(async ({input, ctx}) => {
+        const {idToken} = input;
+
+        let googlePayload;
+        try {
+            googlePayload = await googleService.verifyIdToken(idToken);
+        } catch {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Invalid Google token'
+            });
+        }
+
+        const {email, name, picture, sub} = googlePayload;
+
+        let currentUser = await userService.findUserByEmail(email);
+
+        if(currentUser){
+            const authProvider = await authProviderService.findByProviderAndUserId('google', sub);
+            if(!authProvider){
+                await authProviderService.createAuthProvider({userId: currentUser.id, provider: 'google', providerUserId: sub});
+            }
+            if(!currentUser.avatarUrl && picture){
+                await userService.updateAvatarUrl(currentUser.id, picture);
+            }
+        } else {
+            const result = await userService.createGoogleUser({email, displayName: name, avatarUrl: picture});
+            if(!result.user) throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: 'failed to create google user'
+            });
+            currentUser = result.user;
+            await authProviderService.createAuthProvider({userId: currentUser.id, provider: 'google', providerUserId: sub});
+        }
+
+        const accessToken = authService.generateAccessToken(currentUser.id);
+        const refreshToken = authService.generateRefreshToken(currentUser.id);
+
+        await userService.updateRefreshToken(currentUser.id, refreshToken);
+        setRefreshCookie(ctx, refreshToken);
+
+        return {accessToken, id: currentUser.id, email: currentUser.email, emailVerified: currentUser.emailVerified};
     })
 
 })

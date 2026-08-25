@@ -9,6 +9,7 @@
   "dependencies": {
     "@repo/database": "workspace:*",
     "bcryptjs": "^3.0.3",
+    "google-auth-library": "^11.0.2",
     "jsonwebtoken": "^9.0.3",
     "resend": "^6.22.0",
     "zod": "^4.4.3"

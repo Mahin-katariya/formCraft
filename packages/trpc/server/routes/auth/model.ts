@@ -15,6 +15,11 @@ export const verifyEmail = z.object({
     token: z.string().describe("email verification token")
 })
 
+export const googleLogin = z.object({
+    idToken: z.string().describe("idToken received from the google OAuth Server")
+})
+
 export type CreateUserWithEmailAndPasswordType = z.infer<typeof createUserWithEmailAndPassword>;
 export type SignInUserWithEmailAndPasswordType = z.infer<typeof signInUserWithEmailAndPassword>;
-export type verifyEmailType = z.infer<typeof verifyEmail>;
+export type VerifyEmailType = z.infer<typeof verifyEmail>;
+export type GoogleLoginType = z.infer<typeof googleLogin>

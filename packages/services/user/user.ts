@@ -51,6 +51,27 @@ class UserService {
         return {success: true};
     }
 
+    async createGoogleUser(data: {email: string, displayName: string, avatarUrl: string}){
+        const [user] = await db
+        .insert(userTable)
+        .values(
+            {
+                email: data.email, 
+                displayName: data.displayName, 
+                avatarUrl: data.avatarUrl, 
+                emailVerified: true, 
+                passwordHash: null
+            }
+        ).returning();
+
+        if(!user)  return {success: false, user: null};
+        return {success: true, user}
+    }
+
+    async updateAvatarUrl(userId: string, avatarUrl: string){
+        await db.update(userTable).set({avatarUrl}).where(eq(userTable.id, userId));
+    }
+
 }
 
 export const userService = UserService.getInstance();

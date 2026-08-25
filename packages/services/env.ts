@@ -5,7 +5,8 @@ const envSchema = z.object({
     REFRESH_TOKEN_SECRET: z.string().describe("Refresh Token Secret for refresh token generation"),
     RESEND_API_KEY: z.string().describe("Resend Email Service API Key"),
     RESEND_FROM_EMAIL: z.string().describe("Sending Email from: <pigeon form>"),
-    FRONTEND_URL: z.string().describe("Verification link redirects to our frontend")
+    FRONTEND_URL: z.string().describe("Verification link redirects to our frontend"),
+    GOOGLE_CLIENT_ID: z.string().describe("Google Client Id for verifying the client application")
 });
 
 function craeteEnv(env: NodeJS.ProcessEnv){
