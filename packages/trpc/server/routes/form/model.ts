@@ -20,4 +20,5 @@ export const getFormByIdInput = z.object({
 
 export const deleteFormByIdInput = z.object({
     id: z.string().describe("id of the the form that is to be deleted")
-})
+});
+

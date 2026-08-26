@@ -9,6 +9,15 @@ const getPath = generatePath('/forms');
 
 const TAG = 'Forms';
 
+async function getOwnedForm(formId: string, userId: string) {
+    const form = await formService.getFormById(formId);
+    if (!form.success || !form.data || form.data.deletedAt)
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'form not found' });
+    if (form.data.userId !== userId)
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'not your form' });
+    return form.data;
+}
+
 export const formsRouter = router({
     createForm: protectedProcedure.meta({
         openapi: {
@@ -55,20 +64,8 @@ export const formsRouter = router({
     })
     .input(getFormByIdInput)
     .query(async ({input, ctx}) => {
-        const {id} = input;
-        
-        const form = await formService.getFormById(id);
-        if(!form.success || !form.data || form.data.deletedAt) throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'form not found'
-        });
-
-        if(form.data.userId !== ctx.userId) throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'not your form'
-        });
-
-        return {...form.data};
+        const form = await getOwnedForm(input.id, ctx.userId);
+        return {...form};
     }),
     updateForm: protectedProcedure.meta({
         openapi: {
@@ -81,16 +78,7 @@ export const formsRouter = router({
     .mutation(async ({input,ctx}) => {
         const {id,title,description,slug,responseLimit,expiresAt} = input;
 
-        const form = await formService.getFormById(id);
-        if(!form.success || !form.data || form.data.deletedAt) throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'form not found'
-        });
-
-        if(form.data.userId !== ctx.userId) throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'not your form'
-        });
+        await getOwnedForm(id, ctx.userId);
 
         if(slug){
             const formWithSlugExists = await formService.findFormBySlug(slug);
@@ -121,16 +109,7 @@ export const formsRouter = router({
     .input(deleteFormByIdInput)
     .mutation(async ({input,ctx}) => {
         const {id} = input;
-        const form = await formService.getFormById(id);
-        if(!form.success || !form.data || form.data.deletedAt) throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'form not found'
-        });
-
-        if(form.data.userId !== ctx.userId) throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'not your form'
-        });
+        await getOwnedForm(id, ctx.userId);
 
         const result = await formService.softDeleteForm(id);
 
@@ -140,5 +119,65 @@ export const formsRouter = router({
         });
 
         return {success: result.success};
+    }),
+    publishForm: protectedProcedure.meta({
+        openapi: {
+            method: 'POST',
+            path: getPath('/{id}/publish'),
+            tags: [TAG]
+        }
+    })
+    .input(getFormByIdInput)
+    .mutation(async ({input,ctx}) => {
+        const form = await getOwnedForm(input.id, ctx.userId);
+
+        if(form.status !== 'draft') throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'only draft forms can be published'
+        });
+
+        const updatedForm = await formService.updateFormStatus(input.id, 'published');
+
+        return {...updatedForm.data};
+    }),
+    unpublishForm: protectedProcedure.meta({
+        openapi: {
+            method: 'POST',
+            path: getPath('/{id}/unpublish'),
+            tags: [TAG]
+        }
+    })
+    .input(getFormByIdInput)
+    .mutation(async ({input, ctx}) => {
+        const form = await getOwnedForm(input.id, ctx.userId);
+
+        if(form.status !== 'published') throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'only published forms can be unpublished'
+        });
+
+        const updatedForm = await formService.updateFormStatus(input.id, 'draft');
+
+        return {...updatedForm.data};
+    }),
+    closeForm: protectedProcedure.meta({
+        openapi: {
+            method: 'POST',
+            path: getPath('/{id}/close'),
+            tags: [TAG]
+        }
+    })
+    .input(getFormByIdInput)
+    .mutation(async ({input, ctx}) => {
+        const form = await getOwnedForm(input.id, ctx.userId);
+
+        if(form.status !== 'published') throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'only published forms can be closed'
+        });
+
+        const updatedForm = await formService.updateFormStatus(input.id, 'closed');
+
+        return {...updatedForm.data};
     })
 })

@@ -175,6 +175,112 @@ describe("form.deleteForm", () => {
     })
 })
 
+describe("form.publishForm", () => {
+    it("publishes a draft form", async () => {
+        const user = await registerAndGetToken("test@test.com","password123");
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const form = await caller.form.createForm({title: 'My Form'});
+        const result = await caller.form.publishForm({id: form.id!});
+
+        expect(result.status).toBe('published');
+    })
+
+    it("throws error when publishing an already published form", async () => {
+        const user = await registerAndGetToken("test@test.com","password123");
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const form = await caller.form.createForm({title: 'My Form'});
+        await caller.form.publishForm({id: form.id!});
+
+        await expect(
+            caller.form.publishForm({id: form.id!})
+        ).rejects.toThrow('only draft forms can be published');
+    })
+
+    it("throws error when publishing a closed form", async () => {
+        const user = await registerAndGetToken("test@test.com","password123");
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const form = await caller.form.createForm({title: 'My Form'});
+        await caller.form.publishForm({id: form.id!});
+        await caller.form.closeForm({id: form.id!});
+
+        await expect(
+            caller.form.publishForm({id: form.id!})
+        ).rejects.toThrow('only draft forms can be published');
+    })
+})
+
+describe("form.unpublishForm", () => {
+    it("unpublishes a published form back to draft", async () => {
+        const user = await registerAndGetToken("test@test.com","password123");
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const form = await caller.form.createForm({title: 'My Form'});
+        await caller.form.publishForm({id: form.id!});
+
+        const result = await caller.form.unpublishForm({id: form.id!});
+        expect(result.status).toBe('draft');
+    })
+
+    it("throws error when unpublishing a draft form", async () => {
+        const user = await registerAndGetToken("test@test.com","password123");
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const form = await caller.form.createForm({title: 'My Form'});
+
+        await expect(
+            caller.form.unpublishForm({id: form.id!})
+        ).rejects.toThrow('only published forms can be unpublished');
+    })
+})
+
+describe("form.closeForm", () => {
+    it("closes a published form", async () => {
+        const user = await registerAndGetToken("test@test.com","password123");
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const form = await caller.form.createForm({title: 'My Form'});
+        await caller.form.publishForm({id: form.id!});
+
+        const result = await caller.form.closeForm({id: form.id!});
+        expect(result.status).toBe('closed');
+    })
+
+    it("throws error when closing a draft form", async () => {
+        const user = await registerAndGetToken("test@test.com","password123");
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const form = await caller.form.createForm({title: 'My Form'});
+
+        await expect(
+            caller.form.closeForm({id: form.id!})
+        ).rejects.toThrow('only published forms can be closed');
+    })
+
+    it("throws error when closing an already closed form", async () => {
+        const user = await registerAndGetToken("test@test.com","password123");
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const form = await caller.form.createForm({title: 'My Form'});
+        await caller.form.publishForm({id: form.id!});
+        await caller.form.closeForm({id: form.id!});
+
+        await expect(
+            caller.form.closeForm({id: form.id!})
+        ).rejects.toThrow('only published forms can be closed');
+    })
+})
+
 afterAll(async () => {
     await db.delete(formsTable);
     await db.delete(authProviderTable);
