@@ -1,5 +1,6 @@
 import { authRouter } from "./routes/auth/route.js";
 import { formsRouter } from "./routes/form/route.js";
+import { fieldsRouter } from "./routes/field/route.js";
 import { router } from "./trpc.js";
 import { publicProcedure } from "./trpc.js";
 export const serverRouter = router({
@@ -7,7 +8,8 @@ export const serverRouter = router({
         return {status: 'ok'}
     }),
     auth: authRouter,
-    form: formsRouter
+    form: formsRouter,
+    field: fieldsRouter
 });
 
 export type ServerRouter = typeof serverRouter;
