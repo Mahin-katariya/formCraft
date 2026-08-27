@@ -67,13 +67,6 @@ class FormService {
         return {success: true, data: null};
     }
 
-    async updateFormStatus(id: string, status: string){
-        const [result] = await db.update(formsTable).set({status}).where(eq(formsTable.id, id)).returning();
-
-        if(!result) return {success: false, data: null};
-        return {success: true, data: {...result}};
-    }
-
     async findFormBySlug(slug: string){
         const [result] = await db
         .select()
@@ -84,6 +77,13 @@ class FormService {
                 isNull(formsTable.deletedAt)
             )
         );
+
+        if(!result) return {success: false, data: null};
+        return {success: true, data: {...result}};
+    }
+
+    async updateFormStatus(id: string, status: string){
+        const [result] = await db.update(formsTable).set({status}).where(eq(formsTable.id, id)).returning();
 
         if(!result) return {success: false, data: null};
         return {success: true, data: {...result}};

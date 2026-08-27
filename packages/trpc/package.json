@@ -21,6 +21,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@repo/database": "workspace:*",
     "@repo/services": "workspace:*",
     "@trpc/client": "^11.18.0",
     "@trpc/server": "^11.18.0",
