@@ -21,7 +21,10 @@ export const updateFieldInput = z.object({
     type: z.enum(FIELD_TYPES).optional().describe('updated type of the field'),
     required: z.boolean().optional().describe('updated required status for the field'),
     placeholder: z.string().optional().describe('udpated placeholder for the field'),
-    options: z.array(z.string()).optional().describe("updated options for the select field")
+    options: z.array(z.string()).optional().describe("updated options for the select field"),
+    conditionFieldId: z.string().nullable().optional().describe("UUID of the source field"),
+    conditionOperator: z.enum(['equals','not_equals']).nullable().optional().describe('operator to check if the conditional field should appear or not'),
+    conditionValue: z.string().nullable().optional().describe("the option value to compare against")
 });
 
 export const deleteFieldInput = z.object({

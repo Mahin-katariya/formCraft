@@ -61,6 +61,15 @@ class FieldService{
         if(!result) return {success: false, data: null};
         return {success: true, data: {...result}};
     }
+
+    async clearConditionsBySourceId(fieldId: string){
+        await db
+        .update(fieldsTable)
+        .set({conditionFieldId: null, conditionOperator: null, conditionValue:null})
+        .where(eq(fieldsTable.conditionFieldId, fieldId));
+
+        return {success: true, data: null};
+    }
 }
 
 export const fieldService = FieldService.getInstance();

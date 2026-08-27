@@ -76,7 +76,7 @@ export const fieldsRouter = router({
     })
     .input(updateFieldInput)
     .mutation(async ({input, ctx}) => {
-        const {id, label, type, required, placeholder, options}  = input;
+        const {id, label, type, required, placeholder, options, conditionFieldId, conditionOperator, conditionValue}  = input;
         
         const field = await fieldService.getFieldById(id);
 
@@ -93,6 +93,39 @@ export const fieldsRouter = router({
         if(required !== undefined) updatedData.required = required;
         if(placeholder !== undefined) updatedData.placeholder = placeholder;
         if(options !== undefined) updatedData.options = options;
+
+        if(conditionFieldId !== undefined){
+            if(conditionFieldId === null){
+                updatedData.conditionFieldId = null;
+                updatedData.conditionOperator = null;
+                updatedData.conditionValue = null;
+            }else{
+                if(!conditionOperator || !conditionValue) throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'all conditions fields must be set together'
+                });
+
+                const sourceField = await fieldService.getFieldById(conditionFieldId);
+                if(!sourceField.success || !sourceField.data) throw new TRPCError({
+                    code: 'NOT_FOUND',
+                    message: 'condition source field not found'
+                })
+
+                if(sourceField.data.formId !== field.data.formId) throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'condition source must be in the same form'
+                })
+
+                if(sourceField.data.type !== 'single_select') throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'condition source must be a single-select field'
+                });
+
+                updatedData.conditionFieldId = conditionFieldId;
+                updatedData.conditionOperator = conditionOperator;
+                updatedData.conditionValue = conditionValue;
+            }
+        }
 
         const updatedField = await fieldService.updateField(id, updatedData);
 
@@ -120,6 +153,12 @@ export const fieldsRouter = router({
         });
 
         await getOwnedForm(field.data.formId, ctx.userId);
+
+        const conditionalField = await fieldService.clearConditionsBySourceId(input.id);
+        if(!conditionalField.success) throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'something went wrong, failed to clear the conditional fields'
+        });
 
         const result = await fieldService.deleteField(input.id);
 

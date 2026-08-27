@@ -83,8 +83,8 @@ describe("field.listByForm", () => {
         const fields = await caller.field.listByForm({formId: form.id!});
 
         expect(fields.length).toBe(2);
-        expect(fields[0].label).toBe("First");
-        expect(fields[1].label).toBe("Second");
+        expect(fields[0].label!).toBe("First");
+        expect(fields[1].label!).toBe("Second");
     })
 
     it("returns empty array for form with no fields", async () => {
@@ -131,7 +131,7 @@ describe("field.deleteField", () => {
 
         const fields = await caller.field.listByForm({formId: form.id!});
         expect(fields.length).toBe(1);
-        expect(fields[0].label).toBe("To Keep");
+        expect(fields[0]!.label).toBe("To Keep");
     })
 })
 
@@ -149,9 +149,9 @@ describe("field.reorderField", () => {
 
         const reordered = await caller.field.reorderField({formId: form.id!, fieldId: fieldC.id!, newIndex: 0});
 
-        expect(reordered[0].label).toBe("C");
-        expect(reordered[1].label).toBe("A");
-        expect(reordered[2].label).toBe("B");
+        expect(reordered[0]!.label).toBe("C");
+        expect(reordered[1]!.label).toBe("A");
+        expect(reordered[2]!.label).toBe("B");
     })
 
     it("moves field to middle — position is between neighbors", async () => {
@@ -167,9 +167,146 @@ describe("field.reorderField", () => {
 
         const reordered = await caller.field.reorderField({formId: form.id!, fieldId: fieldC.id!, newIndex: 1});
 
-        expect(reordered[0].label).toBe("A");
-        expect(reordered[1].label).toBe("C");
-        expect(reordered[2].label).toBe("B");
+        expect(reordered[0]!.label).toBe("A");
+        expect(reordered[1]!.label).toBe("C");
+        expect(reordered[2]!.label).toBe("B");
+    })
+})
+
+describe("field.conditionalLogic", () => {
+    it("sets condition on a field pointing to a single_select source", async () => {
+        const user = await registerAndGetToken("test@test.com", "password123");
+        const form = await createFormAsUser(user.accessToken, "My Form");
+
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const source = await caller.field.createField({formId: form.id!, label: "Status", type: "single_select", options: ["Employed", "Unemployed"]});
+        const dependent = await caller.field.createField({formId: form.id!, label: "Company", type: "short_text"});
+
+        const updated = await caller.field.updateField({
+            id: dependent.id!,
+            conditionFieldId: source.id!,
+            conditionOperator: "equals",
+            conditionValue: "Employed"
+        });
+
+        expect(updated.conditionFieldId).toBe(source.id);
+        expect(updated.conditionOperator).toBe("equals");
+        expect(updated.conditionValue).toBe("Employed");
+    })
+
+    it("rejects condition with non-single_select source", async () => {
+        const user = await registerAndGetToken("test@test.com", "password123");
+        const form = await createFormAsUser(user.accessToken, "My Form");
+
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const source = await caller.field.createField({formId: form.id!, label: "Name", type: "short_text"});
+        const dependent = await caller.field.createField({formId: form.id!, label: "Extra", type: "short_text"});
+
+        await expect(
+            caller.field.updateField({
+                id: dependent.id!,
+                conditionFieldId: source.id!,
+                conditionOperator: "equals",
+                conditionValue: "test"
+            })
+        ).rejects.toThrow("condition source must be a single-select field");
+    })
+
+    it("rejects condition with source from a different form", async () => {
+        const user = await registerAndGetToken("test@test.com", "password123");
+        const formA = await createFormAsUser(user.accessToken, "Form A");
+        const formB = await createFormAsUser(user.accessToken, "Form B");
+
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const sourceOnA = await caller.field.createField({formId: formA.id!, label: "Status", type: "single_select", options: ["Yes", "No"]});
+        const dependentOnB = await caller.field.createField({formId: formB.id!, label: "Extra", type: "short_text"});
+
+        await expect(
+            caller.field.updateField({
+                id: dependentOnB.id!,
+                conditionFieldId: sourceOnA.id!,
+                conditionOperator: "equals",
+                conditionValue: "Yes"
+            })
+        ).rejects.toThrow("condition source must be in the same form");
+    })
+
+    it("clears condition when conditionFieldId is set to null", async () => {
+        const user = await registerAndGetToken("test@test.com", "password123");
+        const form = await createFormAsUser(user.accessToken, "My Form");
+
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const source = await caller.field.createField({formId: form.id!, label: "Status", type: "single_select", options: ["A", "B"]});
+        const dependent = await caller.field.createField({formId: form.id!, label: "Detail", type: "short_text"});
+
+        await caller.field.updateField({
+            id: dependent.id!,
+            conditionFieldId: source.id!,
+            conditionOperator: "equals",
+            conditionValue: "A"
+        });
+
+        const cleared = await caller.field.updateField({
+            id: dependent.id!,
+            conditionFieldId: null
+        });
+
+        expect(cleared.conditionFieldId).toBeNull();
+        expect(cleared.conditionOperator).toBeNull();
+        expect(cleared.conditionValue).toBeNull();
+    })
+
+    it("cascade nullifies conditions when source field is deleted", async () => {
+        const user = await registerAndGetToken("test@test.com", "password123");
+        const form = await createFormAsUser(user.accessToken, "My Form");
+
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const source = await caller.field.createField({formId: form.id!, label: "Status", type: "single_select", options: ["X", "Y"]});
+        const dep1 = await caller.field.createField({formId: form.id!, label: "Dep 1", type: "short_text"});
+        const dep2 = await caller.field.createField({formId: form.id!, label: "Dep 2", type: "short_text"});
+
+        await caller.field.updateField({id: dep1.id!, conditionFieldId: source.id!, conditionOperator: "equals", conditionValue: "X"});
+        await caller.field.updateField({id: dep2.id!, conditionFieldId: source.id!, conditionOperator: "not_equals", conditionValue: "Y"});
+
+        await caller.field.deleteField({id: source.id!});
+
+        const fields = await caller.field.listByForm({formId: form.id!});
+        expect(fields.length).toBe(2);
+        for (const f of fields) {
+            expect(f.conditionFieldId).toBeNull();
+            expect(f.conditionOperator).toBeNull();
+            expect(f.conditionValue).toBeNull();
+        }
+    })
+
+    it("lists fields with condition data included", async () => {
+        const user = await registerAndGetToken("test@test.com", "password123");
+        const form = await createFormAsUser(user.accessToken, "My Form");
+
+        const {ctx} = createTestContext({authToken: user.accessToken});
+        const caller = serverRouter.createCaller(ctx);
+
+        const source = await caller.field.createField({formId: form.id!, label: "Pick", type: "single_select", options: ["One", "Two"]});
+        const dependent = await caller.field.createField({formId: form.id!, label: "Conditional", type: "short_text"});
+
+        await caller.field.updateField({id: dependent.id!, conditionFieldId: source.id!, conditionOperator: "not_equals", conditionValue: "Two"});
+
+        const fields = await caller.field.listByForm({formId: form.id!});
+        const conditionalField = fields.find(f => f.id === dependent.id);
+
+        expect(conditionalField!.conditionFieldId).toBe(source.id);
+        expect(conditionalField!.conditionOperator).toBe("not_equals");
+        expect(conditionalField!.conditionValue).toBe("Two");
     })
 })
 
