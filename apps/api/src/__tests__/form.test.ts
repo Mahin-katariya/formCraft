@@ -1,5 +1,5 @@
 import {serverRouter} from '@repo/trpc/server'
-import db,{userTable, authProviderTable, formsTable} from '@repo/database'
+import db,{userTable, authProviderTable, formsTable, fieldsTable, responsesTable, formEventsTable} from '@repo/database'
 import { createTestContext } from './helpers/create-test-context.js'
 import { formService } from '@repo/services'
 
@@ -23,6 +23,9 @@ async function registerAndGetToken(email: string, password: string){
 
 beforeEach(async () => {
     vi.clearAllMocks();
+    await db.delete(formEventsTable);
+    await db.delete(responsesTable);
+    await db.delete(fieldsTable);
     await db.delete(formsTable);
     await db.delete(authProviderTable);
     await db.delete(userTable);
@@ -282,6 +285,9 @@ describe("form.closeForm", () => {
 })
 
 afterAll(async () => {
+    await db.delete(formEventsTable);
+    await db.delete(responsesTable);
+    await db.delete(fieldsTable);
     await db.delete(formsTable);
     await db.delete(authProviderTable);
     await db.delete(userTable);

@@ -1,5 +1,5 @@
 import {serverRouter} from '@repo/trpc/server'
-import db,{userTable, authProviderTable, formsTable, fieldsTable, responsesTable} from '@repo/database'
+import db,{userTable, authProviderTable, formsTable, fieldsTable, responsesTable, formEventsTable} from '@repo/database'
 import { createTestContext } from './helpers/create-test-context.js'
 
 vi.mock('@repo/services', async (importOriginal) => {
@@ -44,6 +44,7 @@ async function submitResponse(slug: string, data: Record<string, unknown>, sessi
 
 beforeEach(async () => {
     vi.clearAllMocks();
+    await db.delete(formEventsTable);
     await db.delete(responsesTable);
     await db.delete(fieldsTable);
     await db.delete(formsTable);
@@ -215,6 +216,7 @@ describe("response.getById", () => {
 });
 
 afterAll(async () => {
+    await db.delete(formEventsTable);
     await db.delete(responsesTable);
     await db.delete(fieldsTable);
     await db.delete(formsTable);
