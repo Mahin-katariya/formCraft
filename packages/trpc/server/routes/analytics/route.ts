@@ -1,4 +1,4 @@
-import { getAnalyticsInput } from './model.js'
+import { getAnalyticsInput, analyticsOutput } from './model.js'
 import { protectedProcedure, router } from '../../trpc.js'
 import { generatePath } from '../../utils/path-generator.js'
 import { TRPCError } from '@trpc/server'
@@ -16,6 +16,7 @@ export const analyticsRouter = router({
         }
     })
     .input(getAnalyticsInput)
+    .output(analyticsOutput)
     .query(async ({input, ctx}) => {
         const form = await formService.getFormById(input.formId);
         if(!form.success || !form.data || form.data.deletedAt)

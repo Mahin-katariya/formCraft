@@ -1,7 +1,7 @@
 import {authService, userService, emailService, googleService, authProviderService} from '@repo/services'
 import { publicProcedure, protectedProcedure, router } from '../../trpc.js'
 import { clearRefreshCookie, getRefreshCookie, setRefreshCookie } from '../../utils/cookie.js'
-import { createUserWithEmailAndPassword, signInUserWithEmailAndPassword, verifyEmail, googleLogin } from './model.js'
+import { createUserWithEmailAndPassword, signInUserWithEmailAndPassword, verifyEmail, googleLogin, authTokenOutput, refreshOutput, logoutOutput, meOutput, verifyEmailOutput } from './model.js'
 import { generatePath } from '../../utils/path-generator.js'
 import { TRPCError } from '@trpc/server'
 
@@ -18,6 +18,7 @@ export const authRouter = router({
         }
     })
     .input(createUserWithEmailAndPassword)
+    .output(authTokenOutput)
     .mutation(async ({input, ctx}) => {
         const {displayName, email, password} = input;
         
@@ -60,6 +61,7 @@ export const authRouter = router({
         }
     })
     .input(signInUserWithEmailAndPassword)
+    .output(authTokenOutput)
     .mutation(async ({input, ctx}) => {
         const {email, password} = input;
 
@@ -102,6 +104,7 @@ export const authRouter = router({
             tags: ['Authorization']
         }
     })
+    .output(refreshOutput)
     .mutation(async ({ctx}) => {
         const refreshToken = getRefreshCookie(ctx);
         if(!refreshToken) throw new TRPCError({
@@ -142,6 +145,7 @@ export const authRouter = router({
             tags: ["Authorization"]
         }
     })
+    .output(logoutOutput)
     .mutation(async ({ctx}) => {
         const refreshTokenResponse = await userService.updateRefreshToken(ctx.userId,null);
         if(!refreshTokenResponse) throw new TRPCError({
@@ -159,6 +163,7 @@ export const authRouter = router({
             path: getPath('/me'),
         }
     })
+    .output(meOutput)
     .query(async ({ctx}) => {
 
         if(!ctx.userId) throw new TRPCError({
@@ -183,6 +188,7 @@ export const authRouter = router({
         }
     })
     .input(verifyEmail)
+    .output(verifyEmailOutput)
     .mutation(async ({input}) => {
         const {token} = input;
 
@@ -208,6 +214,7 @@ export const authRouter = router({
             tags: ['Authentication']
         }
     })
+    .output(verifyEmailOutput)
     .mutation(async ({ctx}) => {
 
         const user = await userService.findUserById(ctx.userId);
@@ -241,6 +248,7 @@ export const authRouter = router({
         }
     })
     .input(googleLogin)
+    .output(authTokenOutput)
     .mutation(async ({input, ctx}) => {
         const {idToken} = input;
 

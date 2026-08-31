@@ -1,4 +1,4 @@
-import {createFormInput, deleteFormByIdInput, getFormByIdInput, updateFormInput} from './model.js'
+import {createFormInput, deleteFormByIdInput, getFormByIdInput, updateFormInput, formOutput, formListOutput, formUpdateOutput, deleteFormOutput} from './model.js'
 import { publicProcedure, protectedProcedure, router } from '../../trpc.js'
 import { generatePath } from '../../utils/path-generator.js'
 import { TRPCError } from '@trpc/server'
@@ -27,6 +27,7 @@ export const formsRouter = router({
         }
     })
     .input(createFormInput)
+    .output(formOutput)
     .mutation(async ({input, ctx}) => {
         const {title, description} = input;
 
@@ -46,6 +47,7 @@ export const formsRouter = router({
             tags: [TAG]
         }
     })
+    .output(formListOutput)
     .query(async ({ctx}) => {
         const forms  = await formService.listFormsByUser(ctx.userId);
         if(!forms.success) throw new TRPCError({
@@ -63,6 +65,7 @@ export const formsRouter = router({
         }
     })
     .input(getFormByIdInput)
+    .output(formOutput)
     .query(async ({input, ctx}) => {
         const form = await getOwnedForm(input.id, ctx.userId);
         return {...form};
@@ -75,6 +78,7 @@ export const formsRouter = router({
         }
     })
     .input(updateFormInput)
+    .output(formUpdateOutput)
     .mutation(async ({input,ctx}) => {
         const {id,title,description,slug,responseLimit,expiresAt} = input;
 
@@ -107,6 +111,7 @@ export const formsRouter = router({
         }
     })
     .input(deleteFormByIdInput)
+    .output(deleteFormOutput)
     .mutation(async ({input,ctx}) => {
         const {id} = input;
         await getOwnedForm(id, ctx.userId);
@@ -128,6 +133,7 @@ export const formsRouter = router({
         }
     })
     .input(getFormByIdInput)
+    .output(formOutput)
     .mutation(async ({input,ctx}) => {
         const form = await getOwnedForm(input.id, ctx.userId);
 
@@ -148,6 +154,7 @@ export const formsRouter = router({
         }
     })
     .input(getFormByIdInput)
+    .output(formOutput)
     .mutation(async ({input, ctx}) => {
         const form = await getOwnedForm(input.id, ctx.userId);
 
@@ -168,6 +175,7 @@ export const formsRouter = router({
         }
     })
     .input(getFormByIdInput)
+    .output(formOutput)
     .mutation(async ({input, ctx}) => {
         const form = await getOwnedForm(input.id, ctx.userId);
 

@@ -1,6 +1,6 @@
 import {generateKeyBetween} from 'fractional-indexing'
 
-import {createFieldInput,updateFieldInput,listFieldInput,deleteFieldInput,reorderFieldInput} from './model.js'
+import {createFieldInput,updateFieldInput,listFieldInput,deleteFieldInput,reorderFieldInput, fieldOutput, fieldListOutput, deleteFieldOutput} from './model.js'
 import {formService, fieldService} from '@repo/services'
 import { publicProcedure, protectedProcedure, router } from '../../trpc.js'
 import { generatePath } from '../../utils/path-generator.js'
@@ -28,6 +28,7 @@ export const fieldsRouter = router({
         }
     })
     .input(createFieldInput)
+    .output(fieldOutput)
     .mutation(async ({input,ctx}) => {
         const {formId, label, type, required, placeholder, options} = input;
         
@@ -60,6 +61,7 @@ export const fieldsRouter = router({
         }
     })
     .input(listFieldInput)
+    .output(fieldListOutput)
     .query(async ({input, ctx}) => {
         const {formId} = input;
         await getOwnedForm(formId, ctx.userId);
@@ -75,6 +77,7 @@ export const fieldsRouter = router({
         }
     })
     .input(updateFieldInput)
+    .output(fieldOutput)
     .mutation(async ({input, ctx}) => {
         const {id, label, type, required, placeholder, options, conditionFieldId, conditionOperator, conditionValue}  = input;
         
@@ -144,6 +147,7 @@ export const fieldsRouter = router({
         }
     })
     .input(deleteFieldInput)
+    .output(deleteFieldOutput)
     .mutation(async ({input, ctx}) => {
         const field = await fieldService.getFieldById(input.id);
 
@@ -177,6 +181,7 @@ export const fieldsRouter = router({
         }
     })
     .input(reorderFieldInput)
+    .output(fieldListOutput)
     .mutation(async ({input, ctx}) => {
         const {formId, fieldId, newIndex} = input;
 

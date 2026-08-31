@@ -40,3 +40,25 @@ export const reorderFieldInput = z.object({
     fieldId: z.string().describe("id of the field thats being reordered"),
     newIndex: z.number().describe("new position of the field")
 })
+
+export const fieldOutput = z.object({
+    id: z.string().describe("field UUID"),
+    formId: z.string().describe("parent form UUID"),
+    label: z.string().describe("field label"),
+    type: z.string().describe("field type"),
+    required: z.boolean().nullable().describe("whether the field is required"),
+    position: z.string().describe("fractional index position"),
+    placeholder: z.string().nullable().describe("placeholder text"),
+    options: z.any().nullable().describe("select/multi-select options"),
+    conditionFieldId: z.string().nullable().describe("condition source field UUID"),
+    conditionOperator: z.string().nullable().describe("condition operator"),
+    conditionValue: z.string().nullable().describe("condition comparison value"),
+    createdAt: z.date().nullable().describe("creation timestamp"),
+    updatedAt: z.date().nullable().describe("last update timestamp"),
+});
+
+export const fieldListOutput = z.array(fieldOutput);
+
+export const deleteFieldOutput = z.object({
+    success: z.boolean()
+});

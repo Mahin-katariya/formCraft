@@ -1,4 +1,4 @@
-import { listByFormInput, listAllInput, getResponseByIdInput } from './model.js'
+import { listByFormInput, listAllInput, getResponseByIdInput, paginatedResponseOutput, responseItem } from './model.js'
 import { protectedProcedure, router } from '../../trpc.js'
 import { generatePath } from '../../utils/path-generator.js'
 import { TRPCError } from '@trpc/server'
@@ -26,6 +26,7 @@ export const responseRouter = router({
         }
     })
     .input(listByFormInput)
+    .output(paginatedResponseOutput)
     .query(async ({input, ctx}) => {
         const {formId, page, pageSize} = input;
 
@@ -49,6 +50,7 @@ export const responseRouter = router({
         }
     })
     .input(listAllInput)
+    .output(paginatedResponseOutput)
     .query(async ({input, ctx}) => {
         const {page, pageSize} = input;
 
@@ -76,6 +78,7 @@ export const responseRouter = router({
         }
     })
     .input(getResponseByIdInput)
+    .output(responseItem)
     .query(async ({input, ctx}) => {
         const result = await responseService.getById(input.id);
         if(!result.success || !result.data)

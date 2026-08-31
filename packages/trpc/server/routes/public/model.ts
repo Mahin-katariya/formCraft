@@ -17,6 +17,28 @@ export const trackEventInput = z.object({
     duration: z.number().optional().describe("milliseconds since page load")
 });
 
+export const publicFormOutput = z.object({
+    id: z.string().describe("form UUID"),
+    title: z.string().describe("form title"),
+    description: z.string().nullable().describe("form description"),
+    slug: z.string().describe("form slug"),
+    fields: z.array(z.object({
+        id: z.string(),
+        label: z.string(),
+        type: z.string(),
+        required: z.boolean().nullable(),
+        placeholder: z.string().nullable(),
+        options: z.any().nullable(),
+        conditionFieldId: z.string().nullable(),
+        conditionOperator: z.string().nullable(),
+        conditionValue: z.string().nullable(),
+    })).describe("form fields")
+});
+
+export const successOutput = z.object({
+    success: z.boolean().describe("operation result")
+});
+
 export type GetFormBySlugInput = z.infer<typeof getFormBySlugInput>;
 export type SubmitResponseInput = z.infer<typeof submitResponseInput>;
 export type TrackEventInput = z.infer<typeof trackEventInput>;

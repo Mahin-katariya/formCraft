@@ -3,7 +3,7 @@ import { fieldService, formService, responseService, formEventService } from '@r
 
 import { publicProcedure, router } from '../../trpc.js'
 import { generatePath } from '../../utils/path-generator.js'
-import { getFormBySlugInput, submitResponseInput, trackEventInput } from './model.js';
+import { getFormBySlugInput, submitResponseInput, trackEventInput, publicFormOutput, successOutput } from './model.js';
 import { buildResponseSchema } from './schema-builder.js';
 
 const getPath = generatePath('/public/forms');
@@ -20,6 +20,7 @@ export const publicFormRouter = router({
     }
     })
     .input(getFormBySlugInput)
+    .output(publicFormOutput)
     .query(async ({input}) => {
         
         const form = await formService.findFormBySlug(input.slug);
@@ -84,6 +85,7 @@ export const publicFormRouter = router({
         }
     })
     .input(submitResponseInput)
+    .output(successOutput)
     .mutation(async ({input}) => {
         const form = await formService.findFormBySlug(input.slug);
         if(!form.success || !form.data) throw new TRPCError({
@@ -149,6 +151,7 @@ export const publicFormRouter = router({
         }
     })
     .input(trackEventInput)
+    .output(successOutput)
     .mutation(async ({input}) => {
         const form = await formService.getFormById(input.formId);
         if(!form.success || !form.data) throw new TRPCError({
