@@ -1,9 +1,9 @@
 import { TRPCError } from '@trpc/server'
-import { fieldService, formService, responseService } from '@repo/services';
+import { fieldService, formService, responseService, formEventService } from '@repo/services';
 
 import { publicProcedure, router } from '../../trpc.js'
 import { generatePath } from '../../utils/path-generator.js'
-import { getFormBySlugInput, submitResponseInput } from './model.js';
+import { getFormBySlugInput, submitResponseInput, trackEventInput } from './model.js';
 import { buildResponseSchema } from './schema-builder.js';
 
 const getPath = generatePath('/public/forms');
@@ -59,6 +59,7 @@ export const publicFormRouter = router({
         });
 
         return {
+            id: form.data.id,
             title: form.data.title,
             description: form.data.description,
             slug: form.data.slug,
@@ -137,6 +138,30 @@ export const publicFormRouter = router({
                 await formService.updateFormStatus(form.data.id, 'closed');
             }
         }
+
+        return {success: true};
+    }),
+    trackEvent: publicProcedure.meta({
+        openapi: {
+            method: 'POST',
+            path: getPath('/track'),
+            tags: tag
+        }
+    })
+    .input(trackEventInput)
+    .mutation(async ({input}) => {
+        const form = await formService.getFormById(input.formId);
+        if(!form.success || !form.data) throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'form not found'
+        });
+
+        await formEventService.trackEvent({
+            formId: input.formId,
+            sessionId: input.sessionId,
+            eventType: input.eventType,
+            duration: input.duration ?? null
+        });
 
         return {success: true};
     })
