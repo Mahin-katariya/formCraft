@@ -10,8 +10,11 @@ import {serverRouter, createContext} from '@repo/trpc/server'
 
 export const app = express();
 
-// TODO : create OpenAPIDocument instance once server router is written in packages/trpc
-// const openAPIDocument = generateOpenApiDocument()
+const openApiDocument = generateOpenApiDocument(serverRouter, {
+    title: "PigeonForm API",
+    version: "1.0.0",
+    baseUrl: `http://localhost:${env.PORT ?? 8000}`,
+});
 
 
 app.use(cors({
@@ -34,14 +37,19 @@ app.get('/health',  (req,res) => {
     });
 });
 
-// TODO: create get routes for openAPi route
+app.get("/openapi.json", (_req, res) => res.json(openApiDocument));
 
+app.use(
+    "/docs",
+    apiReference({
+        spec: { url: "/openapi.json" },
+    })
+);
 
-// TODO: create middleware for express and trpc server
-// app.use("/api", createOpenApiExpressMiddleware({
-//     router: "",
-//     createContext
-// }))
+app.use("/api", createOpenApiExpressMiddleware({
+    router: serverRouter,
+    createContext
+}));
 
 app.use("/trpc", trpcExpress.createExpressMiddleware({
     router: serverRouter,
